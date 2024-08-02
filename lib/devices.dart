@@ -14,7 +14,7 @@ class _DevicesPageState extends State<DevicesPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   double _temperature = 23.0;
 
-  void _addDevice() {
+  void _addDevice(String location) {
     showDialog(
       context: context,
       builder: (context) {
@@ -27,14 +27,24 @@ class _DevicesPageState extends State<DevicesPage> {
           ),
           actions: [
             TextButton(
-              onPressed: () {
+              onPressed: () async {
                 if (deviceNameController.text.isNotEmpty) {
-                  _firestore
-                      .collection('users')
-                      .doc(_auth.currentUser!.uid)
-                      .collection('devices')
-                      .add({'name': deviceNameController.text, 'active': false});
-                  Navigator.pop(context);
+                  try {
+                    await _firestore
+                        .collection('users')
+                        .doc(_auth.currentUser!.uid)
+                        .collection('devices')
+                        .add({
+                          'name': deviceNameController.text,
+                          'active': false,
+                          'location': location,
+                          'image': 'assets/other.png',
+                        });
+                    Navigator.pop(context);
+                  } catch (e) {
+                    print('Error adding device: $e');
+                    Navigator.pop(context);
+                  }
                 }
               },
               child: const Text('Add'),
@@ -49,21 +59,26 @@ class _DevicesPageState extends State<DevicesPage> {
     showDialog(
       context: context,
       builder: (context) {
+        double tempValue = _temperature;
         return AlertDialog(
           title: const Text('Set Temperature'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Slider(
-                value: _temperature,
-                min: 16,
-                max: 30,
-                divisions: 14,
-                label: _temperature.round().toString(),
-                onChanged: (value) {
-                  setState(() {
-                    _temperature = value;
-                  });
+              StatefulBuilder(
+                builder: (context, setState) {
+                  return Slider(
+                    value: tempValue,
+                    min: 16,
+                    max: 30,
+                    divisions: 14,
+                    label: tempValue.round().toString(),
+                    onChanged: (value) {
+                      setState(() {
+                        tempValue = value;
+                      });
+                    },
+                  );
                 },
               ),
             ],
@@ -71,6 +86,9 @@ class _DevicesPageState extends State<DevicesPage> {
           actions: [
             TextButton(
               onPressed: () {
+                setState(() {
+                  _temperature = tempValue;
+                });
                 Navigator.pop(context);
               },
               child: const Text('Set'),
@@ -79,6 +97,16 @@ class _DevicesPageState extends State<DevicesPage> {
         );
       },
     );
+  }
+
+  void _toggleDeviceActive(DocumentSnapshot device) async {
+    final isActive = device['active'] as bool;
+    await _firestore
+        .collection('users')
+        .doc(_auth.currentUser!.uid)
+        .collection('devices')
+        .doc(device.id)
+        .update({'active': !isActive});
   }
 
   @override
@@ -121,14 +149,16 @@ class _DevicesPageState extends State<DevicesPage> {
                 ),
               ),
             ),
+            const SizedBox(height: 16.0), 
             Padding(
-              padding: const EdgeInsets.only(left: 8.0, top: 8.0),
+              padding: const EdgeInsets.only(left: 8.0, top: 16.0),
               child: StreamBuilder<QuerySnapshot>(
                 stream: _auth.currentUser != null
                     ? _firestore
                         .collection('users')
                         .doc(_auth.currentUser!.uid)
                         .collection('devices')
+                        .where('location', isEqualTo: location)
                         .snapshots()
                     : null,
                 builder: (context, snapshot) {
@@ -164,24 +194,34 @@ class _DevicesPageState extends State<DevicesPage> {
                 },
               ),
             ),
+            const SizedBox(height: 16.0), 
             GestureDetector(
               onTap: _changeTemperature,
               child: Container(
-                margin: const EdgeInsets.symmetric(vertical: 20),
+                margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 120),
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: Colors.orange,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Text(
-                  '${_temperature.round()}°C',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    color: Colors.white,
-                  ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.thermostat, color: Colors.white),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${_temperature.round()}°c',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
+            const SizedBox(height: 16.0), 
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
                 stream: _auth.currentUser != null
@@ -189,6 +229,7 @@ class _DevicesPageState extends State<DevicesPage> {
                         .collection('users')
                         .doc(_auth.currentUser!.uid)
                         .collection('devices')
+                        .where('location', isEqualTo: location)
                         .snapshots()
                     : null,
                 builder: (context, snapshot) {
@@ -208,59 +249,61 @@ class _DevicesPageState extends State<DevicesPage> {
                   if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                     return const Center(
                       child: Text(
-                        'No devices connected',
+                        'No devices found',
                         style: TextStyle(color: Colors.white),
                       ),
                     );
                   }
 
-                  final devices = snapshot.data!.docs;
-
                   return ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    itemCount: devices.length,
+                    itemCount: snapshot.data!.docs.length,
                     itemBuilder: (context, index) {
-                      final device = devices[index];
-                      final data = device.data() as Map<String, dynamic>?; 
-                      bool isActive = data != null && data.containsKey('active') ? data['active'] : false;
+                      final device = snapshot.data!.docs[index];
+                      final deviceData = device.data() as Map<String, dynamic>;
+                      final isActive = deviceData['active'] as bool;
+                      final deviceName = deviceData['name'] as String;
+                      final deviceImage = deviceData['image'] as String;
+
                       return Container(
-                        width: 140,
-                        height: 90,
+                        width: 120, 
+                        height: 100, 
                         margin: const EdgeInsets.symmetric(horizontal: 8.0),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(15),
                         ),
-                        child: ListTile(
-                          title: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              // Show different icons based on device name
-                              Icon(
-                                (data?['name'] ?? '').toLowerCase().contains('lamp')
-                                    ? Icons.lightbulb_outline
-                                    : (data?['name'] ?? '').toLowerCase().contains('tv')
-                                        ? Icons.tv
-                                        : Icons.device_unknown,
-                                size: 40,
+                        child: Stack(
+                          children: [
+                            Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Image.asset(
+                                    deviceImage,
+                                    width: 40, 
+                                    height: 40, 
+                                  ),
+                                  Text(
+                                    deviceName,
+                                    style: const TextStyle(color: Colors.black),
+                                  ),
+                                ],
                               ),
-                              Text(
-                                data?['name'] ?? '',
-                                style: const TextStyle(color: Colors.black),
+                            ),
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: GestureDetector(
+                                onTap: () => _toggleDeviceActive(device),
+                                child: Icon(
+                                  Icons.circle,
+                                  color: isActive ? Colors.green : Colors.white,
+                                  size: 24,
+                                ),
                               ),
-                              Checkbox(
-                                value: isActive,
-                                onChanged: (bool? value) {
-                                  _firestore
-                                      .collection('users')
-                                      .doc(_auth.currentUser!.uid)
-                                      .collection('devices')
-                                      .doc(device.id)
-                                      .update({'active': value});
-                                },
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       );
                     },
@@ -273,7 +316,7 @@ class _DevicesPageState extends State<DevicesPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 FloatingActionButton(
-                  onPressed: _addDevice,
+                  onPressed: () => _addDevice(location ?? ''),
                   backgroundColor: Colors.white,
                   child: const Icon(Icons.add_circle_outline),
                 ),

@@ -22,3 +22,10 @@ flutter:
   uses-material-design: true
   assets:
     - assets/texture.png
+    - assets/ac.png
+    - assets/fan.png
+    - assets/light.png
+    - assets/tv.png
+    - assets/other.png
+    - assets/tile.png
+    
