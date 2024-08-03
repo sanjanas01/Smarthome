@@ -29,4 +29,8 @@ flutter:
     - assets/other.png
     - assets/tile.png
     - assets/fridge.png
+    - assets/lightbg.png
+    - assets/fanbg.png
+    - assets/acbg.png
+    - assets/otherbg.png
     
