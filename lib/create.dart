@@ -47,6 +47,7 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: const Color(0xFF596E5F),
       body: Center(
         child: Padding(
@@ -117,6 +118,8 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
                             if (value == null || value.isEmpty) {
                               return 'Please enter your password';
                             }
+                            
+                            
                             return null;
                           },
                         ),

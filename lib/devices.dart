@@ -13,6 +13,7 @@ class _DevicesPageState extends State<DevicesPage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   double _temperature = 23.0;
+  String? _selectedDeviceBackground;
 
   void _addDevice(String location) {
     showDialog(
@@ -37,11 +38,11 @@ class _DevicesPageState extends State<DevicesPage> {
                         .doc(location)
                         .collection('devices')
                         .add({
-                          'name': deviceNameController.text,
-                          'active': false,
-                          'location': location,
-                          'image': 'assets/other.png',
-                        });
+                      'name': deviceNameController.text,
+                      'active': false,
+                      'location': location,
+                      'image': 'assets/other.png',
+                    });
                     Navigator.pop(context);
                   } catch (e) {
                     print('Error adding device: $e');
@@ -66,10 +67,10 @@ class _DevicesPageState extends State<DevicesPage> {
           title: const Text(
             'Set Temperature',
             textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Color(0XFF487748),
-                ),
-                ),
+            style: TextStyle(
+              color: Color(0XFF487748),
+            ),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -105,10 +106,9 @@ class _DevicesPageState extends State<DevicesPage> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Color(0XFF487748),
-                  fontSize: 20
-                  
+                  fontSize: 20,
                 ),
-                ),
+              ),
             ),
           ],
         );
@@ -128,264 +128,308 @@ class _DevicesPageState extends State<DevicesPage> {
         .update({'active': !isActive});
   }
 
+  void _onDeviceTapped(String deviceName) {
+    setState(() {
+      switch (deviceName.toLowerCase()) {
+        case 'fan':
+          _selectedDeviceBackground = 'assets/fanbg.png';
+          break;
+        case 'light':
+          _selectedDeviceBackground = 'assets/lightbg.png';
+          break;
+        case 'ac':
+          _selectedDeviceBackground = 'assets/acbg.png';
+          break;
+        default:
+          _selectedDeviceBackground = 'assets/otherbg.png';
+          break;
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final location = ModalRoute.of(context)?.settings.arguments as String?;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF596E5F),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings, color: Colors.white),
-            onPressed: () {
-              Navigator.pushNamed(context, '/settings');
-            },
+      resizeToAvoidBottomInset: false,
+      body: Stack(
+        
+        children: [
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                color: _selectedDeviceBackground == null
+                    ? const Color(0xFF596E5F)
+                    : null,
+                image: _selectedDeviceBackground != null
+                    ? DecorationImage(
+                        image: AssetImage(_selectedDeviceBackground!),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+              ),
+            ),
           ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 16.0, left: 8.0),
-                child: Text(
-                  location ?? '',
-                  style: const TextStyle(
-                    fontSize: 50,
-                    color: Colors.white,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16.0),
-              Padding(
-                padding: const EdgeInsets.only(left: 8.0, top: 16.0),
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: _auth.currentUser != null
-                      ? _firestore
-                          .collection('users')
-                          .doc(_auth.currentUser!.uid)
-                          .collection('locations')
-                          .doc(location)
-                          .collection('devices')
-                          .snapshots()
-                      : null,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-
-                    if (snapshot.hasError) {
-                      return Center(
-                        child: Text(
-                          'Error: ${snapshot.error}',
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                      );
-                    }
-
-                    int deviceCount = snapshot.hasData
-                        ? snapshot.data!.docs
-                            .where((device) {
-                              final data = device.data() as Map<String, dynamic>?;
-                              return data != null && data.containsKey('active') && data['active'] == true;
-                            })
-                            .length
-                        : 0;
-                    return Text(
-                      '$deviceCount device${deviceCount == 1 ? '' : 's'} active',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        color: Colors.white,
+          SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AppBar(
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    leading: IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                    ),
+                    actions: [
+                      IconButton(
+                        icon: const Icon(Icons.settings, color: Colors.white),
+                        onPressed: () {
+                          Navigator.pushNamed(context, '/settings');
+                        },
                       ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 16.0),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: GestureDetector(
-                  onTap: _changeTemperature,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Color.fromARGB(255, 225, 141, 16),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.thermostat, color: Colors.white),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${_temperature.round()}°c',
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16.0, left: 8.0),
+                    child: Text(
+                      location ?? '',
+                      style: const TextStyle(
+                        fontSize: 50,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 40.0),
-              SizedBox(
-                height: 250,
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: _auth.currentUser != null
-                      ? _firestore
-                          .collection('users')
-                          .doc(_auth.currentUser!.uid)
-                          .collection('locations')
-                          .doc(location)
-                          .collection('devices')
-                          .snapshots()
-                      : null,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-
-                    if (snapshot.hasError) {
-                      return Center(
-                        child: Text(
-                          'Error: ${snapshot.error}',
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                      );
-                    }
-
-                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                      return const Center(
-                        child: Text(
-                          'No devices found',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      );
-                    }
-
-                    return ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: snapshot.data!.docs.length,
-                      itemBuilder: (context, index) {
-                        final device = snapshot.data!.docs[index];
-                        final deviceData = device.data() as Map<String, dynamic>;
-                        final isActive = deviceData['active'] as bool;
-                        final deviceName = deviceData['name'] as String;
-
-                        String path;
-                        switch (deviceName.toLowerCase()) {
-                          case 'tv':
-                            path='assets/tv.png';
-                            break;
-                          case 'ac':
-                            path='assets/ac.png';
-                            break;
-                          case 'fan':
-                            path='assets/fan.png';
-                            break;
-                          case 'light':
-                            path='assets/light.png';
-                            break;
-                          case 'fridge':
-                            path='assets/fridge.png';
-                            break;
-                          default:
-                            path='assets/other.png';
+                  const SizedBox(height: 16.0),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8.0, top: 16.0),
+                    child: StreamBuilder<QuerySnapshot>(
+                      stream: _auth.currentUser != null
+                          ? _firestore
+                              .collection('users')
+                              .doc(_auth.currentUser!.uid)
+                              .collection('locations')
+                              .doc(location)
+                              .collection('devices')
+                              .orderBy('name')
+                              .snapshots()
+                          : null,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
                         }
 
-                        return Container(
-                          width: 200,
-                          height: 200,
-                          margin: const EdgeInsets.symmetric(horizontal: 15.0),
-                          decoration: BoxDecoration(
-                            image: const DecorationImage(
-                              image: AssetImage('assets/tile.png'),
-                              fit: BoxFit.cover,
+                        if (snapshot.hasError) {
+                          return Center(
+                            child: Text(
+                              'Error: ${snapshot.error}',
+                              style: const TextStyle(color: Colors.white),
                             ),
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          child: Stack(
-                            children: [
-                              Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Image.asset(
-                                    path,
-                                    width: 300,
-                                    height: 200,
-                                  ),
-                                  const SizedBox(height: 10.0),
-                                  Text(
-                                    deviceName,
-                                    style: const TextStyle(
-                                      color: Colors.black,
-                                      fontSize: 20,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  const SizedBox(height: 10),
-                                ],
-                              ),
-                              Positioned(
-                                right: 10,
-                                top: 10,
-                                child: GestureDetector(
-                                  onTap: () => _toggleDeviceActive(device),
-                                  child: Icon(
-                                    Icons.circle,
-                                    color: isActive ? Colors.green : Colors.black,
-                                    size: 24,
-                                  ),
-                                ),
-                              ),
-                            ],
+                          );
+                        }
+
+                        int deviceCount = snapshot.hasData
+                            ? snapshot.data!.docs
+                                .where((device) {
+                                  final data = device.data() as Map<String, dynamic>?;
+                                  return data != null && data.containsKey('active') && data['active'] == true;
+                                })
+                                .length
+                            : 0;
+                        return Text(
+                          '$deviceCount device${deviceCount == 1 ? '' : 's'} active',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            color: Colors.white,
                           ),
                         );
                       },
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 60),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  FloatingActionButton(
-                    onPressed: () => _addDevice(location ?? ''),
-                    backgroundColor: Colors.white,
-                    child: const Icon(Icons.add_circle_outline),
-                  ),
-                  const SizedBox(width: 8.0),
-                  const Text(
-                    'Add',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.white,
                     ),
                   ),
+                  const SizedBox(height: 16.0),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: GestureDetector(
+                      onTap: _changeTemperature,
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Color.fromARGB(255, 225, 141, 16),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.thermostat, color: Colors.white),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${_temperature.round()}°c',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 40.0),
+                  SizedBox(
+                    height: 250,
+                    child: StreamBuilder<QuerySnapshot>(
+                      stream: _auth.currentUser != null
+                          ? _firestore
+                              .collection('users')
+                              .doc(_auth.currentUser!.uid)
+                              .collection('locations')
+                              .doc(location)
+                              .collection('devices')
+                              .snapshots()
+                          : null,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+
+                        if (snapshot.hasError) {
+                          return Center(
+                            child: Text(
+                              'Error: ${snapshot.error}',
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          );
+                        }
+
+                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                          return const Center(
+                            child: Text(
+                              'No devices found',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          );
+                        }
+
+                        return ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: snapshot.data!.docs.length,
+                          itemBuilder: (context, index) {
+                            final device = snapshot.data!.docs[index];
+                            final deviceData = device.data() as Map<String, dynamic>;
+                            final isActive = deviceData['active'] as bool;
+                            final deviceName = deviceData['name'] as String;
+
+                            String path;
+                            switch (deviceName.toLowerCase()) {
+                              case 'tv':
+                                path = 'assets/tv.png';
+                                break;
+                              case 'ac':
+                                path = 'assets/ac.png';
+                                break;
+                              case 'fan':
+                                path = 'assets/fan.png';
+                                break;
+                              case 'light':
+                                path = 'assets/light.png';
+                                break;
+                              case 'fridge':
+                                path = 'assets/fridge.png';
+                                break;
+                              default:
+                                path = 'assets/other.png';
+                            }
+
+                            return GestureDetector(
+                              onTap: () => _onDeviceTapped(deviceName),
+                              child: Container(
+                                width: 200,
+                                height: 200,
+                                margin: const EdgeInsets.symmetric(horizontal: 15.0),
+                                decoration: BoxDecoration(
+                                  image: DecorationImage(
+                                    image: AssetImage('assets/tile.png'),
+                                    fit: BoxFit.cover,
+                                  ),
+                                  borderRadius: BorderRadius.circular(15),
+                                ),
+                                child: Stack(
+                                  children: [
+                                    Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Image.asset(
+                                          path,
+                                          width: 200,
+                                          height: 170,
+                                        ),
+                                        const SizedBox(height: 10.0),
+                                        Text(
+                                          deviceName,
+                                          style: const TextStyle(
+                                            color: Color.fromARGB(255, 95, 93, 93),
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.bold
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                        const SizedBox(height: 10),
+                                      ],
+                                    ),
+                                    Positioned(
+                                      right: 10,
+                                      top: 10,
+                                      child: GestureDetector(
+                                        onTap: () => _toggleDeviceActive(device),
+                                        child: Icon(
+                                          Icons.circle,
+                                          color: isActive ? Colors.green : Colors.black,
+                                          size: 24,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 60),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      FloatingActionButton(
+                        onPressed: () => _addDevice(location ?? ''),
+                        backgroundColor: Colors.white,
+                        child: const Icon(Icons.add_circle_outline),
+                      ),
+                      const SizedBox(width: 8.0),
+                      const Text(
+                        'Add',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 110),
                 ],
               ),
-              const SizedBox(height: 50),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

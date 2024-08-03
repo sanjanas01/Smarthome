@@ -21,7 +21,7 @@ class _HomePageState extends State<HomePage> {
     if (location.isNotEmpty) {
       final userDoc = _firestore.collection('users').doc(user?.uid);
       
-      // Check if location already exists
+    
       final querySnapshot = await userDoc.collection('locations')
           .where('location', isEqualTo: location)
           .get();
@@ -33,24 +33,24 @@ class _HomePageState extends State<HomePage> {
         
         _locationController.clear();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Location added successfully'),
-            duration: const Duration(seconds: 2),
+          const SnackBar(
+            content: Text('Location added successfully'),
+            duration: Duration(seconds: 2),
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Location already exists'),
-            duration: const Duration(seconds: 2),
+          const SnackBar(
+            content: Text('Location already exists'),
+            duration: Duration(seconds: 2),
           ),
         );
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Please enter a location'),
-          duration: const Duration(seconds: 2),
+        const SnackBar(
+          content: Text('Please enter a location'),
+          duration: Duration(seconds: 4),
         ),
       );
     }
@@ -62,21 +62,24 @@ class _HomePageState extends State<HomePage> {
     final userName = user?.displayName ?? 'User';
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: const Color(0xFF596E5F),
       body: Center(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 150.0),
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 140.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+               const SizedBox(height: 50),
               Text(
                 'Welcome, $userName',
                 style: const TextStyle(
                   fontSize: 24,
                   color: Colors.white,
+                  fontWeight: FontWeight.w600
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 50),
               TextFormField(
                 controller: _locationController,
                 decoration: const InputDecoration(
@@ -86,7 +89,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 style: const TextStyle(color: Colors.white),
               ),
-              const SizedBox(height: 20),
+          
               ElevatedButton(
                 onPressed: _addLocation,
                 child: const Text('Add Location'),
@@ -95,7 +98,7 @@ class _HomePageState extends State<HomePage> {
                   foregroundColor: Colors.black,
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
                   stream: _auth.currentUser != null
@@ -151,6 +154,7 @@ class _HomePageState extends State<HomePage> {
                   },
                 ),
               ),
+              
             ],
           ),
         ),
