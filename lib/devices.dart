@@ -33,12 +33,14 @@ class _DevicesPageState extends State<DevicesPage> {
                     await _firestore
                         .collection('users')
                         .doc(_auth.currentUser!.uid)
+                        .collection('locations')
+                        .doc(location) 
                         .collection('devices')
                         .add({
                           'name': deviceNameController.text,
                           'active': false,
                           'location': location,
-                          'image': 'assets/other.png',
+                          'image': 'assets/other.png', 
                         });
                     Navigator.pop(context);
                   } catch (e) {
@@ -104,6 +106,8 @@ class _DevicesPageState extends State<DevicesPage> {
     await _firestore
         .collection('users')
         .doc(_auth.currentUser!.uid)
+        .collection('locations')
+        .doc(device['location']) 
         .collection('devices')
         .doc(device.id)
         .update({'active': !isActive});
@@ -133,172 +137,203 @@ class _DevicesPageState extends State<DevicesPage> {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 16.0, left: 8.0),
-              child: Text(
-                location ?? '',
-                style: const TextStyle(
-                  fontSize: 50,
-                  color: Colors.white,
-                  fontWeight: FontWeight.w500,
+      body: SingleChildScrollView( 
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 16.0, left: 8.0),
+                child: Text(
+                  location ?? '',
+                  style: const TextStyle(
+                    fontSize: 50,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16.0), 
-            Padding(
-              padding: const EdgeInsets.only(left: 8.0, top: 16.0),
-              child: StreamBuilder<QuerySnapshot>(
-                stream: _auth.currentUser != null
-                    ? _firestore
-                        .collection('users')
-                        .doc(_auth.currentUser!.uid)
-                        .collection('devices')
-                        .where('location', isEqualTo: location)
-                        .snapshots()
-                    : null,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
+              const SizedBox(height: 16.0),
+              Padding(
+                padding: const EdgeInsets.only(left: 8.0, top: 16.0),
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: _auth.currentUser != null
+                      ? _firestore
+                          .collection('users')
+                          .doc(_auth.currentUser!.uid)
+                          .collection('locations')
+                          .doc(location) 
+                          .collection('devices')
+                          .snapshots()
+                      : null,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
 
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Text(
-                        'Error: ${snapshot.error}',
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    );
-                  }
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Text(
+                          'Error: ${snapshot.error}',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      );
+                    }
 
-                  int deviceCount = snapshot.hasData
-                      ? snapshot.data!.docs
-                          .where((device) {
-                            final data = device.data() as Map<String, dynamic>?;
-                            return data != null && data.containsKey('active') && data['active'] == true;
-                          })
-                          .length
-                      : 0;
-
-                  return Text(
-                    '$deviceCount device${deviceCount == 1 ? '' : 's'} active',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      color: Colors.white,
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 16.0), 
-            GestureDetector(
-              onTap: _changeTemperature,
-              child: Container(
-                margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 120),
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.orange,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.thermostat, color: Colors.white),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${_temperature.round()}°c',
+                    int deviceCount = snapshot.hasData
+                        ? snapshot.data!.docs
+                            .where((device) {
+                              final data = device.data() as Map<String, dynamic>?;
+                              return data != null && data.containsKey('active') && data['active'] == true;
+                            })
+                            .length
+                        : 0;
+                    return Text(
+                      '$deviceCount device${deviceCount == 1 ? '' : 's'} active',
                       style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
                         color: Colors.white,
                       ),
-                    ),
-                  ],
+                    );
+                  },
                 ),
               ),
-            ),
-            const SizedBox(height: 16.0), 
-            Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-                stream: _auth.currentUser != null
-                    ? _firestore
-                        .collection('users')
-                        .doc(_auth.currentUser!.uid)
-                        .collection('devices')
-                        .where('location', isEqualTo: location)
-                        .snapshots()
-                    : null,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Text(
-                        'Error: ${snapshot.error}',
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    );
-                  }
-
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return const Center(
-                      child: Text(
-                        'No devices found',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    );
-                  }
-
-                  return ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: snapshot.data!.docs.length,
-                    itemBuilder: (context, index) {
-                      final device = snapshot.data!.docs[index];
-                      final deviceData = device.data() as Map<String, dynamic>;
-                      final isActive = deviceData['active'] as bool;
-                      final deviceName = deviceData['name'] as String;
-                      final deviceImage = deviceData['image'] as String;
-
-                      return Container(
-                        width: 120, 
-                        height: 100, 
-                        margin: const EdgeInsets.symmetric(horizontal: 8.0),
-                        decoration: BoxDecoration(
+              const SizedBox(height: 16.0),
+              GestureDetector(
+                onTap: _changeTemperature,
+                child: Container(
+                  margin: const EdgeInsets.symmetric(vertical: 20, horizontal: 150),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Color.fromARGB(255, 225, 141, 16),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.thermostat, color: Colors.white),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${_temperature.round()}°c',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
                           color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 40.0),
+              SizedBox(
+                height: 250, 
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: _auth.currentUser != null
+                      ? _firestore
+                          .collection('users')
+                          .doc(_auth.currentUser!.uid)
+                          .collection('locations')
+                          .doc(location) 
+                          .collection('devices')
+                          .snapshots()
+                      : null,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Text(
+                          'Error: ${snapshot.error}',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      );
+                    }
+
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      return const Center(
+                        child: Text(
+                          'No devices found',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      );
+                    }
+
+                    return ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: snapshot.data!.docs.length,
+                      itemBuilder: (context, index) {
+                        final device = snapshot.data!.docs[index];
+                        final deviceData = device.data() as Map<String, dynamic>;
+                        final isActive = deviceData['active'] as bool;
+                        final deviceName = deviceData['name'] as String;
+
+                        String path;
+                        switch (deviceName.toLowerCase()) 
+                        {
+                          case 'tv':
+                            path='assets/tv.png';
+                            break;
+                          case 'ac':
+                            path='assets/ac.png';
+                            break;
+                          case 'fan':
+                            path='assets/fan.png';
+                            break;
+                          case 'light':
+                            path='assets/light.png';
+                            break;
+                          case 'fridge':
+                            path='assets/fridge.png';
+                            break;
+                          default:
+                            path='assets/other.png'; 
+                        }
+
+                        return Container(
+                        width: 200,
+                        height: 200,
+                        margin: const EdgeInsets.symmetric(horizontal: 15.0),
+                        decoration: BoxDecoration(
+                          image: const DecorationImage(
+                            image: AssetImage('assets/tile.png'), 
+                            fit: BoxFit.cover,
+                          ),
                           borderRadius: BorderRadius.circular(15),
                         ),
                         child: Stack(
                           children: [
-                            Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Image.asset(
-                                    deviceImage,
-                                    width: 40, 
-                                    height: 40, 
+                            Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Image.asset(
+                                  path,
+                                  width: 300, // Adjust size if necessary
+                                  height: 200, // Adjust size if necessary
+                                ),
+                                const SizedBox(height: 10.0),
+                                Text(
+                                  deviceName,
+                                  style: const TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 20, // Adjust size if necessary
                                   ),
-                                  Text(
-                                    deviceName,
-                                    style: const TextStyle(color: Colors.black),
-                                  ),
-                                ],
-                              ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 10),
+                              ],
                             ),
                             Positioned(
-                              top: 8,
-                              right: 8,
+                              right: 10, 
+                              top: 10, 
                               child: GestureDetector(
                                 onTap: () => _toggleDeviceActive(device),
                                 child: Icon(
                                   Icons.circle,
-                                  color: isActive ? Colors.green : Colors.white,
+                                  color: isActive ? Colors.green : Colors.black,
                                   size: 24,
                                 ),
                               ),
@@ -306,32 +341,34 @@ class _DevicesPageState extends State<DevicesPage> {
                           ],
                         ),
                       );
-                    },
-                  );
-                },
+
+                      },
+                    );
+                  },
+                ),
               ),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                FloatingActionButton(
-                  onPressed: () => _addDevice(location ?? ''),
-                  backgroundColor: Colors.white,
-                  child: const Icon(Icons.add_circle_outline),
-                ),
-                const SizedBox(width: 8.0),
-                const Text(
-                  'Add',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Colors.white,
+              const SizedBox(height: 60),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  FloatingActionButton(
+                    onPressed: () => _addDevice(location ?? ''),
+                    backgroundColor: Colors.white,
+                    child: const Icon(Icons.add_circle_outline),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-          ],
+                  const SizedBox(width: 8.0),
+                  const Text(
+                    'Add',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 50),
+            ],
+          ),
         ),
       ),
     );
